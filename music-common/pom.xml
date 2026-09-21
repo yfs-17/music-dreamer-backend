@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.music</groupId>
+        <artifactId>music-dreamer-backend</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>music-common</artifactId>
+    <packaging>jar</packaging>
+    <name>music-common</name>
+    <description>公共模块：统一返回体、全局异常处理、工具类、常量</description>
+
+    <!-- 注意：本模块不声明 spring-boot-maven-plugin，产物是普通 jar，才能被其他模块依赖 -->
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <!--
+          以下依赖全部标 optional：编译本模块时可见，但【不传递】给依赖 music-common 的模块。
+          这是网关能正常启动的关键 —— 网关是 WebFlux 应用，一旦 classpath 里混进 spring-webmvc，
+          Spring Boot 会把它判定成 Servlet 应用并启动失败。
+          业务模块需要这些能力时，各自在 pom 里显式声明。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- MyBatis-Plus 3.5.9 起 PaginationInnerInterceptor 被挪到了这个包里，只引 starter 找不到该类 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+</project>

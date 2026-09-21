@@ -1,0 +1,131 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: music-gateway
+
+  # 网关是 WebFlux 应用，显式声明可避免 classpath 里意外出现的 servlet 类把它带偏
+  main:
+    web-application-type: reactive
+
+  # nacos-config 在 classpath 上时，这里必须有 nacos: 条目，否则启动直接失败。
+  # optional: 表示该配置在 Nacos 上不存在时静默跳过 —— 所以什么都不建也能启动。
+  config:
+    import:
+      - optional:nacos:music-common.yaml
+      - optional:nacos:music-gateway.yaml
+
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        group: DEFAULT_GROUP
+      config:
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        refresh-enabled: true
+
+    # Spring Cloud Gateway 5.x 的前缀是 spring.cloud.gateway.server.webflux。
+    # 沿用旧的 spring.cloud.gateway.* 不会报错，但路由会静默失效，务必不要改回去。
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            # OPTIONS 预检请求不走路由，必须开启才会被 CORS 过滤器处理
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                # allowCredentials 为 true 时不能用 allowedOrigins: "*"，必须用 Pattern
+                allowedOriginPatterns: "*"
+                allowedMethods: "*"
+                allowedHeaders: "*"
+                exposedHeaders: "*"
+                allowCredentials: true
+                maxAge: 3600
+
+          routes:
+            - id: music-auth
+              uri: lb://music-auth
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=1
+            - id: music-music
+              uri: lb://music-music
+              predicates:
+                - Path=/api/music/**
+              filters:
+                - StripPrefix=1
+            - id: music-singer
+              uri: lb://music-singer
+              predicates:
+                - Path=/api/singer/**
+              filters:
+                - StripPrefix=1
+            - id: music-admin
+              uri: lb://music-admin
+              predicates:
+                - Path=/api/admin/**
+              filters:
+                - StripPrefix=1
+            - id: music-setting
+              uri: lb://music-setting
+              predicates:
+                - Path=/api/setting/**
+              filters:
+                - StripPrefix=1
+            - id: music-msg
+              uri: lb://music-msg
+              predicates:
+                - Path=/api/msg/**
+              filters:
+                - StripPrefix=1
+            - id: music-upload
+              uri: lb://music-upload
+              predicates:
+                - Path=/api/upload/**
+              filters:
+                - StripPrefix=1
+            - id: music-list
+              uri: lb://music-list
+              predicates:
+                - Path=/api/list/**
+              filters:
+                - StripPrefix=1
+            - id: music-like
+              uri: lb://music-like
+              predicates:
+                - Path=/api/like/**
+              filters:
+                - StripPrefix=1
+
+music:
+  jwt:
+    secret: ${JWT_SECRET:music-dreamer-please-change-this-secret-key-32bytes}
+  gateway:
+    auth:
+      enabled: true
+      # 这里的路径是网关收到的原始路径（StripPrefix 之前）
+      whitelist:
+        - /api/auth/login
+        - /api/auth/register
+        - /actuator/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      # 显式开启，否则 /actuator/gateway/routes 不会注册（排查路由时很有用）
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: info

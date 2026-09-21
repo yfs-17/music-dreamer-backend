@@ -1,0 +1,88 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: music-like
+
+  # nacos-config 在 classpath 上时必须有 nacos: 条目，否则启动直接失败。
+  # optional: 表示该配置在 Nacos 上不存在时静默跳过 —— 什么都不建也能启动。
+  config:
+    import:
+      - optional:nacos:music-common.yaml
+      - optional:nacos:music-like.yaml
+
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        group: DEFAULT_GROUP
+      config:
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        refresh-enabled: true
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:music_like_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:123456}
+    hikari:
+      pool-name: music-like-pool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+      database: 0
+      timeout: 5s
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:music}
+    password: ${RABBITMQ_PASSWORD:music123}
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        concurrency: 2
+        max-concurrency: 8
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.music.like.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+music:
+  jwt:
+    secret: ${JWT_SECRET:music-dreamer-please-change-this-secret-key-32bytes}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.music.like.mapper: debug
