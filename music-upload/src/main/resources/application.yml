@@ -9,8 +9,18 @@ spring:
   # optional: 表示该配置在 Nacos 上不存在时静默跳过 —— 什么都不建也能启动。
   config:
     import:
+      # 本地开发把 OSS 等密钥放在项目根目录的 .env（已被 .gitignore 忽略）。
+      # 两个路径都列上：命令行从根目录启动时命中 ./，IDEA 以模块目录为工作目录时命中 ../
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
       - optional:nacos:music-common.yaml
       - optional:nacos:music-upload.yaml
+
+  # 音频最大 50MB；默认 1MB 会让正常音频直接 413
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 
   cloud:
     nacos:
@@ -61,8 +71,9 @@ aliyun:
     endpoint: ${OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
     access-key-id: ${OSS_ACCESS_KEY_ID:}
     access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
-    bucket-name: ${OSS_BUCKET_NAME:music-dreamer}
-    dir-prefix: music/
+    bucket-name: ${OSS_BUCKET_NAME:}
+    # 可选：CDN / 自定义域名，配置后用它拼接访问 URL
+    public-base-url: ${OSS_PUBLIC_BASE_URL:}
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -81,6 +92,14 @@ mybatis-plus:
 music:
   jwt:
     secret: ${JWT_SECRET:music-dreamer-please-change-this-secret-key-32bytes}
+  upload:
+    # oss：上传到阿里云 OSS；local：落到本地目录，适合没有外网/未配密钥时开发
+    storage-type: ${UPLOAD_STORAGE:oss}
+    local-dir: ${UPLOAD_LOCAL_DIR:./uploads}
+    # local 模式下返回给前端的访问前缀（经网关，前端同源代理 /api）
+    public-base-url: ${UPLOAD_PUBLIC_BASE_URL:/api/upload/files}
+    # 对象键前缀，最终形如 music/audio/2026/10/22/uuid.mp3
+    object-prefix: ${UPLOAD_OBJECT_PREFIX:music/}
 
 management:
   endpoints:

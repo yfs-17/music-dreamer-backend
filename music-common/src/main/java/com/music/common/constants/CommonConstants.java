@@ -18,4 +18,22 @@ public final class CommonConstants {
     public static final String USER_ID_HEADER = "X-User-Id";
 
     public static final String USERNAME_HEADER = "X-Username";
+
+    /**
+     * 网关校验 token 后写入的用户角色请求头：1 普通用户 2 歌手 3 管理员。
+     * 老 token 没有 role 时网关不写这个头，下游按普通用户处理。
+     */
+    public static final String USER_ROLE_HEADER = "X-User-Role";
+
+    /**
+     * 服务间内部接口的共享密钥请求头。
+     * /internal/** 由 music-common 的 InternalApiFilter 统一校验，网关不会路由这些路径。
+     */
+    public static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
+
+    /**
+     * 登出黑名单的 Redis key 前缀，完整 key 为 前缀 + token 的 jti。
+     * 写入方是 music-auth（登出），读取方是 music-gateway（每个请求校验），故放在公共模块。
+     */
+    public static final String AUTH_BLACKLIST_PREFIX = "music:auth:blacklist:";
 }

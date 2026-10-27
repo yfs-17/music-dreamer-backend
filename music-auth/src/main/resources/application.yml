@@ -73,6 +73,8 @@ mybatis-plus:
 music:
   jwt:
     secret: ${JWT_SECRET:music-dreamer-please-change-this-secret-key-32bytes}
+    # token 有效期（秒），默认 7 天。必须与网关配置一致，否则两边算出的过期时间会打架
+    expire-seconds: ${JWT_EXPIRE_SECONDS:604800}
 
 management:
   endpoints:

@@ -68,6 +68,13 @@
             <artifactId>mybatis-plus-jsqlparser</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <!-- 纯单元测试，不启动 Spring 上下文 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

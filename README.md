@@ -95,6 +95,18 @@ MySQL 用你本机已装的实例，不在 compose 里。项目是**拆库设计
 
 建表脚本见 `database/music.sql`（已执行，共 12 张表）。
 
+再导入开发用演示数据（4 位歌手、3 张专辑、12 首歌曲、4 个歌单、4 条消息、3 条公告）。
+音频与封面都已上传到阿里云 OSS（音频为 SoundHelix 示例曲的约 50 秒片段），
+bucket 需开启公共读，导入后可直接播放：
+
+```bash
+mysql -uroot -p --default-character-set=utf8mb4 < database/seed.sql
+```
+
+> `seed.sql` 会先清空 `t_singer` / `t_album` / `t_song` / `t_history` / `t_playlist` /
+> `t_playlist_song` / `t_message` / `t_notice`，仅用于开发环境。
+> `--default-character-set=utf8mb4` 不能省，否则中文会乱码。
+
 改连接信息有两种方式（任选其一）：
 - 直接改各模块 `src/main/resources/application.yml` 里 `spring.datasource.*` 的默认值
 - 或在 IDEA 的 Run Configuration 里配环境变量 `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USERNAME` / `MYSQL_PASSWORD`
@@ -113,6 +125,10 @@ mvn clean install -DskipTests
 ```bash
 java -jar music-auth/target/music-auth-1.0.0-SNAPSHOT.jar
 ```
+
+> 项目按 JDK 21 编译。若终端里 `java -version` 是 17，启动会报
+> `UnsupportedClassVersionError`（class file version 65.0），请改用 JDK 21 的绝对路径，
+> 例如 `"D:\jdk21\jdk-21.0.10\bin\java.exe" -jar ...`。
 
 ### 5. 验证
 
@@ -146,13 +162,26 @@ curl http://localhost:9000/actuator/health
 
 ## 环境变量
 
-见 `.env.example`。其中：
+模板见 `.env.example`，真实配置写在项目根目录的 `.env`（**已被 `.gitignore` 忽略**，
+不要把真实密钥写进 `.env.example`）。
 
-- 前四段供 `docker compose` 做变量替换（放在项目根目录即自动生效）
-- 最后一段供 Spring Boot 服务读取，需在 IDE 的 Run Configuration 里配置
+- `docker compose` 会自动读取根目录 `.env` 做变量替换
+- `music-upload` 通过 `spring.config.import` 自动加载根目录 `.env`，
+  命令行从根目录启动、或 IDEA 以模块目录为工作目录启动都能读到
+- 其他服务如果在 IDEA 里单独运行，仍需在 Run Configuration 里配置它们用到的变量
 
-OSS 的 `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` 目前是空的，
-拿到 AccessKey 后填上才能使用上传功能。
+OSS 相关变量：
+
+| 变量 | 说明 |
+|---|---|
+| `OSS_ENDPOINT` | 例 `oss-cn-beijing.aliyuncs.com`，必须与 bucket 所在地域一致 |
+| `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` | AccessKey |
+| `OSS_BUCKET_NAME` | bucket 名。**bucket 必须开启公共读**，否则返回的文件 URL 无法直接访问 |
+| `OSS_PUBLIC_BASE_URL` | 可选，CDN / 自定义域名 |
+| `UPLOAD_STORAGE` | `oss`（默认）或 `local`，本地调试没有外网时用 `local` |
+
+> 如果上传报 `NoSuchBucket`，先确认 bucket 名与地域是否对应。可以用
+> `java -cp <classpath> OssCheck.java` 之类的只读脚本列出账号下的 bucket，不要靠猜。
 
 ## 注意事项（踩过的坑）
 
@@ -194,3 +223,71 @@ OSS 的 `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` 目前是空的，
    如果只想单独调试某个服务、不想依赖 Nacos，可以加
    `spring.cloud.nacos.discovery.fail-fast=false`，或直接
    `spring.cloud.nacos.discovery.enabled=false` 关掉注册。
+
+8. **网关白名单支持按 HTTP 方法限定**，格式为 `GET:/api/music/song/**`。
+   公开只读接口必须用这种写法：若只写 `/api/music/song/**`，同前缀的写接口
+   （例如上报收听记录）也会被一并放行。不带方法前缀的规则仍按任意方法匹配，用于登录、注册这类接口。
+   OPTIONS 预检请求始终放行。
+
+9. **分页统一用 `music-common` 的 `PageQuery` / `PageResult`**。
+   `PageQuery` 的 setter 已做边界收敛（页码 ≥ 1，每页 1-100），
+   `PageResult.of(ipage, Vo::from)` 可直接把实体分页转成 VO 分页，避免暴露 `isDeleted` 等内部字段。
+
+10. **上传服务新增了 `t_file.object_key` 列**。使用旧库时需手动迁移一次：
+
+    ```sql
+    ALTER TABLE music_upload_db.t_file
+      ADD COLUMN object_key VARCHAR(500) DEFAULT NULL COMMENT '存储对象键（删除对象时使用）'
+      AFTER file_url;
+    ```
+
+    删除文件时要用 objectKey 去删 OSS 对象，从 URL 反推不可靠。
+    本地存储模式（`UPLOAD_STORAGE=local`）的文件落在 `./uploads`，通过 `/upload/files/**` 静态映射访问。
+
+11. **上传大小上限是 50MB**（`spring.servlet.multipart.max-file-size`），
+    各类型另有自己的限制：音频 50MB、图片 5MB、歌词 1MB。
+    超过容器上限会抛 `MaxUploadSizeExceededException`，已在全局异常处理里转成 400。
+
+12. **JWT 现在包含 `role`**，网关注入 `X-User-Role`（1 普通用户 / 2 歌手 / 3 管理员），
+    admin 服务据此判断管理员权限。改造前签发的老 token 没有 role，按普通用户处理，
+    需要重新登录才能进入后台。
+
+    把某个账号设为管理员：
+
+    ```sql
+    UPDATE music_auth_db.t_user SET role = 3 WHERE username = 'testlogin02';
+    ```
+
+13. **服务间内部接口统一走 `/internal/**`**，由 music-common 的 `InternalApiFilter`
+    校验 `X-Internal-Token`。网关只路由 `/api/**`，所以外部无法经网关访问这些接口；
+    这层校验防的是直接访问服务端口。默认开发密钥是 `music-internal-dev-token`，
+    生产环境必须用 `MUSIC_INTERNAL_TOKEN` 覆盖，且所有服务配置成同一个值。
+
+14. **admin 聚合服务使用 RestClient + LoadBalancer**（不是 OpenFeign），
+    按 Nacos 服务名寻址（如 `http://music-auth/internal/user/count`）。
+    单个下游不可用时，看板会把对应指标显示为 0，不会整体 500。
+
+## 测试
+
+```bash
+# 全部单元测试
+mvn test
+
+# 只跑公共模块 / 某个服务
+mvn -pl music-common test
+mvn -pl music-auth,music-music,music-like -am test
+```
+
+> 首次运行需要联网下载 surefire 的 JUnit Platform provider，之后可离线执行。
+> 纯单元测试使用 Mockito；MyBatis-Plus 的 lambda 条件需要手动
+> `TableInfoHelper.initTableInfo(...)`，见各测试类的 `@BeforeAll`。
+
+## 容器化部署
+
+后端镜像、前端 Nginx 配置、应用 compose 与常见问题见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
+
+```bash
+mvn clean package -DskipTests
+docker compose up -d
+docker compose -f deploy/docker-compose.app.yml up -d --build
+```

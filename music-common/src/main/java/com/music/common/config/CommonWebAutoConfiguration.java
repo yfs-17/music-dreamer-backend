@@ -4,6 +4,7 @@ import com.music.common.exception.GlobalExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -13,11 +14,19 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@EnableConfigurationProperties(MusicInternalProperties.class)
 public class CommonWebAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
     public GlobalExceptionHandler globalExceptionHandler() {
         return new GlobalExceptionHandler();
+    }
+
+    /** 保护 /internal/**，只允许服务间携带共享密钥调用 */
+    @Bean
+    @ConditionalOnMissingBean
+    public InternalApiFilter internalApiFilter(MusicInternalProperties properties) {
+        return new InternalApiFilter(properties.getToken());
     }
 }

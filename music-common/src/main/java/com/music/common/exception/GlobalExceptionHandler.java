@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * 由 CommonWebAutoConfiguration 注册，且仅在 Servlet 应用中生效。
@@ -31,6 +32,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public R<Void> handleBindException(BindException e) {
         return R.fail(ResultCode.PARAM_ERROR.getCode(), resolveFieldMessage(e.getBindingResult().getFieldError()));
+    }
+
+    /** 超过 spring.servlet.multipart 上限时由容器抛出，明确告诉客户端是大文件问题 */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public R<Void> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        log.warn("上传文件超过大小限制: {}", e.getMessage());
+        return R.fail(ResultCode.PARAM_ERROR.getCode(), "文件大小超过限制");
     }
 
     @ExceptionHandler(Exception.class)

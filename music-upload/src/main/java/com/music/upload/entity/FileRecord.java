@@ -28,6 +28,9 @@ public class FileRecord implements Serializable {
     /** 访问 URL */
     private String fileUrl;
 
+    /** 存储对象键，删除 OSS 对象时使用（从 URL 反推不可靠） */
+    private String objectKey;
+
     /** 类型：1音频 2封面 3歌词 4头像 */
     private Integer fileType;
 

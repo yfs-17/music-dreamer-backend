@@ -1,3 +1,4 @@
 com.music.common.config.CommonCoreAutoConfiguration
 com.music.common.config.CommonWebAutoConfiguration
 com.music.common.config.CommonMybatisPlusAutoConfiguration
+com.music.common.config.CommonSecurityAutoConfiguration

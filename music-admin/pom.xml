@@ -47,6 +47,11 @@
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
+        <!-- 服务间调用：RestClient + 客户端负载均衡（按 Nacos 服务名寻址） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.baomidou</groupId>

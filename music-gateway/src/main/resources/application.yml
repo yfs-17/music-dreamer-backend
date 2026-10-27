@@ -102,9 +102,20 @@ spring:
               filters:
                 - StripPrefix=1
 
+  # 读 music-auth 写入的登出黑名单。Redis 不可用时网关 fail-open 放行，不影响 JWT 本身的有效性。
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+      database: 0
+      timeout: 5s
+
 music:
   jwt:
     secret: ${JWT_SECRET:music-dreamer-please-change-this-secret-key-32bytes}
+    # 必须与 music-auth 保持一致：两边算出的过期时间不一致会导致黑名单 TTL 错位
+    expire-seconds: ${JWT_EXPIRE_SECONDS:604800}
   gateway:
     auth:
       enabled: true
@@ -113,6 +124,18 @@ music:
         - /api/auth/login
         - /api/auth/register
         - /actuator/**
+        # 公开只读内容：未登录的访客也要能浏览首页、搜索结果和播放页。
+        # 必须带 GET: 前缀，否则同前缀的写接口（如上报历史）也会被放行。
+        - GET:/api/music/song/**
+        - GET:/api/music/album/**
+        - GET:/api/singer/**
+        # 歌单只放行广场/热门/详情；/api/list/mine 需要登录，不能写成 /api/list/**
+        - GET:/api/list/page
+        - GET:/api/list/hot
+        - GET:/api/list/detail/**
+        # 公告只放行公开列表与详情；/api/admin/notice/manage/** 等管理接口仍需要管理员
+        - GET:/api/admin/notice/list
+        - GET:/api/admin/notice/detail/**
 
 management:
   endpoints:
